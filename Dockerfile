@@ -15,7 +15,7 @@ WORKDIR /app
 RUN mkdir -p /app/web
 
 # Copy web dashboard files if they exist
-COPY c2-server/web-dashboard/ /app/web/ 2>/dev/null || true
+COPY c2-server/web-dashboard/ /app/web/
 
 # Create the Python server file
 RUN echo 'import http.server' > /app/server.py
