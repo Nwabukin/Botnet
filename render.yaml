@@ -6,7 +6,7 @@ services:
   - type: web
     name: botnet-c2-server
     env: docker
-    dockerfilePath: c2-server/docker/Dockerfile
+    dockerfilePath: Dockerfile
     dockerContext: .
     plan: starter
     region: oregon
