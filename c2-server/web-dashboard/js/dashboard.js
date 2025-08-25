@@ -301,18 +301,22 @@ class C2Dashboard {
         const botsHtml = bots.map(bot => {
             const status = this.getBotStatus(bot);
             const statusClass = this.getBotStatusClass(status);
-            const lastSeen = new Date(bot.last_seen).toLocaleString();
+            const lastSeen = bot.last_seen ? new Date(bot.last_seen).toLocaleString() : 'Unknown';
+            const countryCode = bot.country_code || 'XX';
+            const countryFlag = countryCode !== 'XX' ? 
+                `<img src="https://flagcdn.com/16x12/${countryCode.toLowerCase()}.png" alt="${countryCode}">` : 
+                '<i class="fas fa-globe"></i>';
             
             return `
                 <tr>
                     <td><i class="fas fa-circle ${statusClass}"></i> ${status}</td>
-                    <td>${bot.bot_id}</td>
-                    <td>${bot.ip_address}</td>
-                    <td>${bot.hostname}</td>
-                    <td>${bot.platform}</td>
+                    <td>${bot.bot_id || 'Unknown'}</td>
+                    <td>${bot.ip_address || 'Unknown'}</td>
+                    <td>${bot.hostname || 'Unknown'}</td>
+                    <td>${bot.platform || 'Unknown'}</td>
                     <td>
-                        <img src="https://flagcdn.com/16x12/${bot.country_code.toLowerCase()}.png" alt="${bot.country_code}">
-                        ${bot.country_code}
+                        ${countryFlag}
+                        ${countryCode}
                     </td>
                     <td>${lastSeen}</td>
                     <td>
@@ -658,6 +662,38 @@ class C2Dashboard {
         this.showAlert(`Command response received from ${data.bot_id}`, 'info');
         if (this.currentSection === 'commands') {
             this.refreshCommandQueue();
+        }
+    }
+
+    // Bot management methods
+    showBotDetails(botId) {
+        console.log(`Showing details for bot: ${botId}`);
+        alert(`Bot Details: ${botId}\n\nThis would show detailed information about the selected bot.`);
+    }
+
+    sendCommandToBot(botId) {
+        console.log(`Sending command to bot: ${botId}`);
+        const command = prompt('Enter command to send to bot:');
+        if (command) {
+            fetch('/api/commands', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: botId, command: command })
+            })
+            .then(() => this.showAlert(`Command sent to ${botId}`, 'success'))
+            .catch(() => this.showAlert('Failed to send command', 'danger'));
+        }
+    }
+
+    disconnectBot(botId) {
+        if (confirm(`Are you sure you want to disconnect bot ${botId}?`)) {
+            console.log(`Disconnecting bot: ${botId}`);
+            fetch(`/api/bots/${botId}/disconnect`, { method: 'POST' })
+                .then(() => {
+                    this.showAlert(`Bot ${botId} disconnected`, 'warning');
+                    this.loadBotList(); // Refresh the list
+                })
+                .catch(() => this.showAlert('Failed to disconnect bot', 'danger'));
         }
     }
 
