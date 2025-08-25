@@ -1,201 +1,83 @@
 # Simplified Dockerfile for Render.com Deployment
 # Advanced Botnet Research Framework
 
-FROM ubuntu:22.04
+FROM python:3.9-slim
 
-# Install runtime dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
     curl \
-    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Create application directories
-RUN mkdir -p /app/web /app/config /app/logs
+# Create application directory
+WORKDIR /app
 
-# Copy web dashboard files
-COPY c2-server/web-dashboard/ /app/web/
+# Create web directory
+RUN mkdir -p /app/web
 
-# Create Python server
-RUN cat > /app/c2_server.py << 'EOL'
-#!/usr/bin/env python3
-import http.server
-import socketserver
-import json
-import os
-from datetime import datetime
+# Copy web dashboard files if they exist
+COPY c2-server/web-dashboard/ /app/web/ 2>/dev/null || true
 
-class ResearchHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory='/app/web', **kwargs)
-    
-    def do_GET(self):
-        if self.path == '/health':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            response = {
-                "status": "healthy",
-                "mode": "research",
-                "timestamp": datetime.now().isoformat(),
-                "ethical_controls": "enabled",
-                "compliance": "active"
-            }
-            self.wfile.write(json.dumps(response).encode())
-        elif self.path == '/api/status':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            response = {
-                "framework": "Advanced Botnet Research Framework",
-                "version": "1.0.0",
-                "mode": "RESEARCH",
-                "ethical_controls": "STRICT",
-                "bots_connected": 0,
-                "research_session": os.environ.get('RESEARCH_SESSION_ID', 'cloud_demo'),
-                "status": "operational"
-            }
-            self.wfile.write(json.dumps(response).encode())
-        elif self.path == '/':
-            self.path = '/index.html'
-            super().do_GET()
-        else:
-            super().do_GET()
+# Create the Python server file
+RUN echo 'import http.server' > /app/server.py
+RUN echo 'import socketserver' >> /app/server.py
+RUN echo 'import json' >> /app/server.py
+RUN echo 'import os' >> /app/server.py
+RUN echo 'from datetime import datetime' >> /app/server.py
+RUN echo '' >> /app/server.py
+RUN echo 'class Handler(http.server.SimpleHTTPRequestHandler):' >> /app/server.py
+RUN echo '    def __init__(self, *args, **kwargs):' >> /app/server.py
+RUN echo '        super().__init__(*args, directory="/app/web", **kwargs)' >> /app/server.py
+RUN echo '' >> /app/server.py
+RUN echo '    def do_GET(self):' >> /app/server.py
+RUN echo '        if self.path == "/health":' >> /app/server.py
+RUN echo '            self.send_response(200)' >> /app/server.py
+RUN echo '            self.send_header("Content-type", "application/json")' >> /app/server.py
+RUN echo '            self.end_headers()' >> /app/server.py
+RUN echo '            response = {"status": "healthy", "mode": "research"}' >> /app/server.py
+RUN echo '            self.wfile.write(json.dumps(response).encode())' >> /app/server.py
+RUN echo '        elif self.path == "/api/status":' >> /app/server.py
+RUN echo '            self.send_response(200)' >> /app/server.py
+RUN echo '            self.send_header("Content-type", "application/json")' >> /app/server.py
+RUN echo '            self.end_headers()' >> /app/server.py
+RUN echo '            response = {"framework": "Advanced Botnet Research Framework", "version": "1.0.0", "mode": "RESEARCH", "status": "operational"}' >> /app/server.py
+RUN echo '            self.wfile.write(json.dumps(response).encode())' >> /app/server.py
+RUN echo '        elif self.path == "/":' >> /app/server.py
+RUN echo '            self.path = "/index.html"' >> /app/server.py
+RUN echo '            super().do_GET()' >> /app/server.py
+RUN echo '        else:' >> /app/server.py
+RUN echo '            super().do_GET()' >> /app/server.py
+RUN echo '' >> /app/server.py
+RUN echo 'PORT = int(os.environ.get("PORT", 8080))' >> /app/server.py
+RUN echo 'print(f"Starting server on port {PORT}")' >> /app/server.py
+RUN echo 'with socketserver.TCPServer(("", PORT), Handler) as httpd:' >> /app/server.py
+RUN echo '    httpd.serve_forever()' >> /app/server.py
 
-PORT = int(os.environ.get('PORT', 8080))
-print(f"🔬 Advanced Botnet Research Framework")
-print(f"🌐 Starting server on port {PORT}")
-print(f"⚖️  Research Mode: ENABLED")
-print(f"🔒 Ethical Controls: STRICT")
-print(f"📁 Serving files from: /app/web")
+# Create index.html
+RUN echo '<!DOCTYPE html>' > /app/web/index.html
+RUN echo '<html><head><title>Advanced Botnet Research Framework</title>' >> /app/web/index.html
+RUN echo '<style>body{font-family:Arial;background:#1e3c72;color:white;text-align:center;padding:50px}' >> /app/web/index.html
+RUN echo '.container{max-width:800px;margin:auto;background:rgba(0,0,0,0.3);padding:40px;border-radius:15px}' >> /app/web/index.html
+RUN echo 'h1{color:#4CAF50;font-size:2.5em}.status{background:rgba(76,175,80,0.2);padding:20px;border-radius:10px;margin:20px 0}' >> /app/web/index.html
+RUN echo '.api-link{background:#4CAF50;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;margin:10px;display:inline-block}' >> /app/web/index.html
+RUN echo '.feature{background:rgba(255,255,255,0.1);padding:15px;margin:10px 0;border-radius:8px}</style></head>' >> /app/web/index.html
+RUN echo '<body><div class="container"><h1>🔬 Advanced Botnet Research Framework</h1>' >> /app/web/index.html
+RUN echo '<div class="status"><h2>✅ System Status: OPERATIONAL</h2>' >> /app/web/index.html
+RUN echo '<p><strong>Mode:</strong> Research & Educational</p>' >> /app/web/index.html
+RUN echo '<p><strong>Ethical Controls:</strong> STRICT</p></div>' >> /app/web/index.html
+RUN echo '<h3>⚖️ RESEARCH USE ONLY</h3>' >> /app/web/index.html
+RUN echo '<p>This framework is for legitimate security research and education only.</p>' >> /app/web/index.html
+RUN echo '<h3>🔗 API Endpoints</h3>' >> /app/web/index.html
+RUN echo '<a href="/health" class="api-link">Health Check</a>' >> /app/web/index.html
+RUN echo '<a href="/api/status" class="api-link">System Status</a>' >> /app/web/index.html
+RUN echo '<div class="feature">🎯 C2 Communication Server</div>' >> /app/web/index.html
+RUN echo '<div class="feature">🔒 Advanced Encryption Module</div>' >> /app/web/index.html
+RUN echo '<div class="feature">⚖️ Ethical Control System</div>' >> /app/web/index.html
+RUN echo '<p style="margin-top:40px;opacity:0.8;">Deployed on Render.com • Research Mode Active</p>' >> /app/web/index.html
+RUN echo '</div></body></html>' >> /app/web/index.html
 
-with socketserver.TCPServer(("", PORT), ResearchHandler) as httpd:
-    httpd.serve_forever()
-EOL
-
-# Create default index.html
-RUN cat > /app/web/index.html << 'EOL'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Botnet Research Framework</title>
-    <style>
-        body { 
-            font-family: "Segoe UI", Arial, sans-serif; 
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white; 
-            margin: 0; 
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .container { 
-            max-width: 800px; 
-            text-align: center; 
-            background: rgba(0,0,0,0.2);
-            padding: 40px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-        }
-        h1 { 
-            color: #4CAF50; 
-            margin-bottom: 30px;
-            font-size: 2.5em;
-        }
-        .status { 
-            background: rgba(76, 175, 80, 0.2); 
-            padding: 20px; 
-            border-radius: 10px; 
-            margin: 20px 0;
-            border-left: 5px solid #4CAF50;
-        }
-        .warning { 
-            background: rgba(255, 152, 0, 0.2); 
-            padding: 20px; 
-            border-radius: 10px; 
-            margin: 20px 0;
-            border-left: 5px solid #FF9800;
-        }
-        .api-link { 
-            display: inline-block; 
-            background: #4CAF50; 
-            color: white; 
-            padding: 10px 20px; 
-            text-decoration: none; 
-            border-radius: 5px; 
-            margin: 10px;
-            transition: background 0.3s;
-        }
-        .api-link:hover { 
-            background: #45a049; 
-        }
-        .feature { 
-            background: rgba(255,255,255,0.1); 
-            padding: 15px; 
-            margin: 10px 0; 
-            border-radius: 8px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🔬 Advanced Botnet Research Framework</h1>
-        
-        <div class="status">
-            <h2>✅ System Status: OPERATIONAL</h2>
-            <p><strong>Mode:</strong> Research & Educational</p>
-            <p><strong>Ethical Controls:</strong> STRICT</p>
-            <p><strong>Compliance:</strong> Active</p>
-        </div>
-
-        <div class="warning">
-            <h3>⚖️ RESEARCH USE ONLY</h3>
-            <p>This framework is designed for legitimate security research, education, and testing purposes only. All activities are logged and monitored.</p>
-        </div>
-
-        <h3>🔗 API Endpoints</h3>
-        <a href="/health" class="api-link">Health Check</a>
-        <a href="/api/status" class="api-link">System Status</a>
-
-        <h3>🛡️ Security Features</h3>
-        <div class="feature">✅ End-to-end encryption</div>
-        <div class="feature">✅ Research mode enforcement</div>
-        <div class="feature">✅ Ethical boundary controls</div>
-        <div class="feature">✅ Comprehensive audit logging</div>
-        <div class="feature">✅ Geographic restrictions</div>
-        <div class="feature">✅ Time-based constraints</div>
-
-        <h3>📊 Framework Components</h3>
-        <div class="feature">🎯 C2 Communication Server</div>
-        <div class="feature">🔒 Advanced Encryption Module</div>
-        <div class="feature">📈 Real-time Monitoring</div>
-        <div class="feature">⚖️ Ethical Control System</div>
-        <div class="feature">📝 Compliance Logging</div>
-
-        <p style="margin-top: 40px; font-size: 0.9em; opacity: 0.8;">
-            Deployed on Render.com • Research Mode Active • All Activities Monitored
-        </p>
-    </div>
-</body>
-</html>
-EOL
-
-# Set up permissions
-RUN chmod +x /app/c2_server.py
-
-# Environment variables for research mode
+# Environment variables
 ENV RESEARCH_MODE=true
-ENV RESEARCH_SESSION_ID=""
 ENV ETHICAL_CONTROLS=strict
-ENV COMPLIANCE_LOGGING=enabled
-ENV C2_MODE=RESEARCH
 
 # Expose port
 EXPOSE 8080
@@ -204,20 +86,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# Create startup script
-RUN cat > /app/start.sh << 'EOL'
-#!/bin/bash
-echo "🚀 Starting Advanced Botnet Research Framework"
-echo "📊 Research Mode: $RESEARCH_MODE"
-echo "🔒 Ethical Controls: $ETHICAL_CONTROLS"
-echo "🆔 Session ID: $RESEARCH_SESSION_ID"
-
-# Start the research framework
-python3 /app/c2_server.py
-EOL
-
-RUN chmod +x /app/start.sh
-
-WORKDIR /app
-
-CMD ["/app/start.sh"]
+# Start the server
+CMD ["python3", "/app/server.py"]
