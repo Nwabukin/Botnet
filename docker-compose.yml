@@ -1,193 +1,507 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # ================================
+  # Core C2 Infrastructure
+  # ================================
+  
+  # C2 Server - Main Control Server
+  c2-server:
+    build:
+      context: .
+      dockerfile: c2-server/docker/Dockerfile
+      target: production
+    container_name: botnet-c2-server
+    environment:
+      - C2_MODE=RESEARCH
+      - RESEARCH_MODE=true
+      - RESEARCH_SESSION_ID=${RESEARCH_SESSION_ID:-}
+      - C2_DATABASE_URL=postgresql://botnet:research_password_2024@postgres:5432/botnet_research
+      - C2_REDIS_URL=redis://:research_redis_2024@redis:6379
+      - C2_HTTP_PORT=8080
+      - C2_HTTPS_PORT=8443
+      - C2_WEBSOCKET_PORT=8081
+      - C2_ADMIN_PORT=9090
+      - ETHICAL_CONTROLS=strict
+      - COMPLIANCE_LOGGING=enabled
+    volumes:
+      - c2_data:/app/data
+      - c2_logs:/app/logs
+      - c2_config:/app/config
+      - ./c2-server/docker/configs:/app/config:ro
+      - ./c2-server/docker/certs:/app/certs:ro
+    ports:
+      - "8080:8080"   # HTTP API
+      - "8443:8443"   # HTTPS API
+      - "8081:8081"   # WebSocket
+      - "9090:9090"   # Metrics/Admin
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - c2-network
+      - monitoring-network
+    healthcheck:
+      test: ["/usr/local/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+
+  # C2 Server Research Mode (Extended with analysis tools)
+  c2-server-research:
+    build:
+      context: .
+      dockerfile: c2-server/docker/Dockerfile
+      target: research
+    container_name: botnet-c2-research
+    environment:
+      - C2_MODE=RESEARCH_EXTENDED
+      - RESEARCH_MODE=true
+      - RESEARCH_LOGGING=verbose
+      - RESEARCH_MONITORING=enabled
+      - RESEARCH_SESSION_ID=${RESEARCH_SESSION_ID:-}
+      - C2_DATABASE_URL=postgresql://botnet:research_password_2024@postgres:5432/botnet_research
+      - C2_REDIS_URL=redis://:research_redis_2024@redis:6379
+      - ETHICAL_CONTROLS=strict
+      - COMPLIANCE_MODE=enabled
+    volumes:
+      - c2_research_data:/app/data
+      - c2_research_logs:/app/logs
+      - ./c2-server/docker/configs:/app/config:ro
+      - ./c2-server/docker/research-tools:/app/research-tools:ro
+    ports:
+      - "8090:8080"   # Research HTTP API
+      - "8453:8443"   # Research HTTPS API
+      - "8091:8081"   # Research WebSocket
+      - "9091:9090"   # Research Metrics
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - c2-network
+      - monitoring-network
+    profiles:
+      - research
+    healthcheck:
+      test: ["/usr/local/bin/healthcheck.sh", "deep"]
+      interval: 60s
+      timeout: 30s
+      retries: 2
+      start_period: 120s
+
+  # ================================
+  # Database Layer
+  # ================================
+
+  # PostgreSQL Database - Primary Data Store
   postgres:
     image: postgres:15-alpine
     container_name: botnet-postgres
     environment:
       POSTGRES_DB: botnet_research
-      POSTGRES_USER: botnet_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-research_password_change_me}
+      POSTGRES_USER: botnet
+      POSTGRES_PASSWORD: research_password_2024
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./c2-server/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - botnet-network
+      - ./configs/postgres:/docker-entrypoint-initdb.d:ro
+      - postgres_backups:/backups
     ports:
       - "5432:5432"
     restart: unless-stopped
+    networks:
+      - c2-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U botnet_user -d botnet_research"]
+      test: ["CMD-SHELL", "pg_isready -U botnet -d botnet_research"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
 
-  # C2 Server
-  c2-server:
-    build:
-      context: .
-      dockerfile: c2-server/docker/Dockerfile
-    container_name: botnet-c2-server
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=botnet_research
-      - DB_USER=botnet_user
-      - DB_PASSWORD=${DB_PASSWORD:-research_password_change_me}
-      - C2_PORT=${C2_PORT:-8443}
-      - C2_SSL_CERT=/certs/server.crt
-      - C2_SSL_KEY=/certs/server.key
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    volumes:
-      - ./configs/development:/configs:ro
-      - ./certs:/certs:ro
-      - c2_logs:/var/log/c2
-    networks:
-      - botnet-network
-    ports:
-      - "${C2_PORT:-8443}:8443"
-      - "8080:8080"  # HTTP fallback
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Web Dashboard
-  web-dashboard:
-    build:
-      context: ./c2-server/web-dashboard
-      dockerfile: Dockerfile
-    container_name: botnet-dashboard
-    environment:
-      - REACT_APP_C2_API_URL=https://localhost:${C2_PORT:-8443}
-      - REACT_APP_WS_URL=wss://localhost:${C2_PORT:-8443}/ws
-    networks:
-      - botnet-network
-    ports:
-      - "3000:3000"
-    depends_on:
-      - c2-server
-    restart: unless-stopped
-
-  # Redis for caching and session management
+  # Redis Cache and Session Store
   redis:
     image: redis:7-alpine
     container_name: botnet-redis
-    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password_change_me}
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass research_redis_2024
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
     volumes:
       - redis_data:/data
-    networks:
-      - botnet-network
+      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
     ports:
       - "6379:6379"
     restart: unless-stopped
+    networks:
+      - c2-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "research_redis_2024", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  # Monitoring with Prometheus
+  # ================================
+  # Monitoring and Logging Stack
+  # ================================
+
+  # Prometheus Monitoring
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.40.0
     container_name: botnet-prometheus
+    volumes:
+      - ./configs/prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - monitoring-network
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
       - '--web.enable-lifecycle'
-    volumes:
-      - ./tools/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    networks:
-      - botnet-network
-    ports:
-      - "9090:9090"
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Grafana for visualization
+  # Grafana Dashboard
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:9.3.0
     container_name: botnet-grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin_password_change_me}
-      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=research_grafana_2024
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./tools/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./tools/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
-    networks:
-      - botnet-network
+      - ./configs/grafana:/etc/grafana/provisioning:ro
     ports:
-      - "3001:3000"
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - monitoring-network
     depends_on:
       - prometheus
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Log aggregation with ELK stack (Elasticsearch)
+  # ================================
+  # ELK Stack for Log Analysis
+  # ================================
+
+  # Elasticsearch
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
     container_name: botnet-elasticsearch
     environment:
+      - node.name=elasticsearch
+      - cluster.name=botnet-research-cluster
       - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.monitoring.collection.enabled=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
-    networks:
-      - botnet-network
+      - ./configs/elasticsearch:/usr/share/elasticsearch/config:ro
     ports:
       - "9200:9200"
+      - "9300:9300"
     restart: unless-stopped
+    networks:
+      - monitoring-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
-  # Kibana for log visualization
+  # Kibana
   kibana:
     image: docker.elastic.co/kibana/kibana:8.8.0
     container_name: botnet-kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    networks:
-      - botnet-network
+      - SERVER_NAME=kibana
+      - SERVER_HOST=0.0.0.0
+      - LOGGING_LEVEL=info
+    volumes:
+      - kibana_data:/usr/share/kibana/data
+      - ./configs/kibana:/usr/share/kibana/config:ro
     ports:
       - "5601:5601"
+    restart: unless-stopped
+    networks:
+      - monitoring-network
     depends_on:
       - elasticsearch
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
+  # Logstash
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.8.0
+    container_name: botnet-logstash
+    environment:
+      - "LS_JAVA_OPTS=-Xmx512m -Xms512m"
+      - PIPELINE_WORKERS=2
+    volumes:
+      - ./configs/logstash:/usr/share/logstash/pipeline:ro
+      - ./configs/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - logstash_data:/usr/share/logstash/data
+      - c2_logs:/logs:ro
+    ports:
+      - "5044:5044"   # Beats input
+      - "5000:5000"   # TCP input
+      - "9600:9600"   # API
+    restart: unless-stopped
+    networks:
+      - monitoring-network
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9600/_node/stats || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ================================
+  # Security and Analysis Tools
+  # ================================
+
+  # Network Traffic Analysis
+  suricata:
+    image: jasonish/suricata:latest
+    container_name: botnet-suricata
+    command: suricata -i eth0 -v
+    volumes:
+      - ./configs/suricata:/etc/suricata:ro
+      - suricata_logs:/var/log/suricata
+    network_mode: host
+    restart: unless-stopped
+    profiles:
+      - security
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+  # Vulnerability Scanner
+  openvas:
+    image: mikesplain/openvas:latest
+    container_name: botnet-openvas
+    ports:
+      - "443:443"
+      - "9391:9391"
+    volumes:
+      - openvas_data:/var/lib/openvas
+    restart: unless-stopped
+    profiles:
+      - security
+    environment:
+      - OV_PASSWORD=research_openvas_2024
+
+  # ================================
+  # Backup and Maintenance
+  # ================================
+
+  # Database Backup Service
+  backup:
+    image: postgres:15-alpine
+    container_name: botnet-backup
+    volumes:
+      - postgres_backups:/backups
+      - ./scripts/backup:/scripts:ro
+    environment:
+      - PGHOST=postgres
+      - PGUSER=botnet
+      - PGPASSWORD=research_password_2024
+      - PGDATABASE=botnet_research
+      - BACKUP_SCHEDULE=0 2 * * *
+    restart: unless-stopped
+    networks:
+      - c2-network
+    depends_on:
+      - postgres
+    command: >
+      sh -c "
+      echo '0 2 * * * /scripts/backup.sh' | crontab - &&
+      crond -f
+      "
+    profiles:
+      - maintenance
+
+  # Log Rotation and Cleanup
+  logrotate:
+    image: alpine:latest
+    container_name: botnet-logrotate
+    volumes:
+      - c2_logs:/logs
+      - ./configs/logrotate:/etc/logrotate.d:ro
+    restart: unless-stopped
+    command: >
+      sh -c "
+      apk add --no-cache logrotate dcron &&
+      echo '0 1 * * * /usr/sbin/logrotate /etc/logrotate.d/botnet' | crontab - &&
+      crond -f
+      "
+    profiles:
+      - maintenance
+
+# ================================
+# Networks
+# ================================
 networks:
-  botnet-network:
+  c2-network:
     driver: bridge
     ipam:
-      driver: default
       config:
         - subnet: 172.20.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: c2-bridge
+      com.docker.network.bridge.enable_icc: true
+      com.docker.network.bridge.enable_ip_masquerade: true
 
+  monitoring-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: monitoring-bridge
+
+# ================================
+# Volumes
+# ================================
 volumes:
-  postgres_data:
+  # C2 Server Data
+  c2_data:
     driver: local
-  redis_data:
-    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/c2-server
+
   c2_logs:
     driver: local
-  prometheus_data:
-    driver: local
-  grafana_data:
-    driver: local
-  elasticsearch_data:
+    driver_opts:
+      type: none
+      o: bind
+      device: ./logs/c2-server
+
+  c2_config:
     driver: local
 
-# Environment variables template
-# Create a .env file with these variables:
-# DB_PASSWORD=your_secure_database_password
-# REDIS_PASSWORD=your_secure_redis_password
-# GRAFANA_PASSWORD=your_secure_grafana_password
-# C2_PORT=8443
-# LOG_LEVEL=INFO
+  c2_research_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/c2-research
+
+  c2_research_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./logs/c2-research
+
+  # Database Data
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
+
+  postgres_backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./backups/postgres
+
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
+
+  # Monitoring Data
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/prometheus
+
+  grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/grafana
+
+  # ELK Stack Data
+  elasticsearch_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/elasticsearch
+
+  kibana_data:
+    driver: local
+
+  logstash_data:
+    driver: local
+
+  # Security Tools Data
+  suricata_logs:
+    driver: local
+
+  openvas_data:
+    driver: local
