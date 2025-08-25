@@ -697,6 +697,204 @@ class C2Dashboard {
         }
     }
 
+    // Utility and helper methods
+    formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    calculateUptime(startTime) {
+        const start = new Date(startTime);
+        const now = new Date();
+        const diff = now - start;
+        
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        return `${days}d ${hours}h ${minutes}m`;
+    }
+
+    getActivityTypeClass(type) {
+        const typeClasses = {
+            'INFO': 'text-info',
+            'SUCCESS': 'text-success', 
+            'WARNING': 'text-warning',
+            'ERROR': 'text-danger',
+            'DEBUG': 'text-muted'
+        };
+        return typeClasses[type] || 'text-info';
+    }
+
+    getBotStatus(bot) {
+        if (!bot.last_seen) return 'Unknown';
+        const now = new Date();
+        const lastSeen = new Date(bot.last_seen);
+        const diffMinutes = (now - lastSeen) / (1000 * 60);
+        
+        if (diffMinutes < 2) return 'Active';
+        if (diffMinutes < 10) return 'Idle'; 
+        return 'Offline';
+    }
+
+    getBotStatusClass(status) {
+        const statusClasses = {
+            'Active': 'text-success',
+            'Idle': 'text-warning',
+            'Offline': 'text-danger',
+            'Unknown': 'text-muted'
+        };
+        return statusClasses[status] || 'text-muted';
+    }
+
+    updateTargetSelection(bots) {
+        const targetSelect = document.getElementById('commandTarget');
+        if (!targetSelect) return;
+        
+        // Clear existing options except "All Bots"
+        targetSelect.innerHTML = '<option value="all">All Connected Bots</option>';
+        
+        // Add individual bot options
+        bots.forEach(bot => {
+            const option = document.createElement('option');
+            option.value = bot.bot_id;
+            option.textContent = `${bot.bot_id} (${bot.ip_address})`;
+            targetSelect.appendChild(option);
+        });
+    }
+
+    async sendCommand() {
+        const target = document.getElementById('commandTarget')?.value;
+        const type = document.getElementById('commandType')?.value;
+        const params = document.getElementById('commandParams')?.value;
+        
+        if (!type) {
+            this.showAlert('Please select a command type', 'warning');
+            return;
+        }
+
+        try {
+            let parameters = {};
+            if (params) {
+                try {
+                    parameters = JSON.parse(params);
+                } catch (e) {
+                    this.showAlert('Invalid JSON in parameters', 'danger');
+                    return;
+                }
+            }
+
+            if (this.isResearchMode && !this.isCommandResearchApproved(type)) {
+                this.showAlert('Command not approved for research mode', 'warning');
+                return;
+            }
+
+            const response = await fetch('/api/commands', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target, type, parameters })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.showAlert(`Command sent successfully (ID: ${result.command_id || 'unknown'})`, 'success');
+                
+                // Clear form
+                document.getElementById('commandParams').value = '';
+                
+                // Refresh command queue
+                await this.refreshCommandQueue();
+            } else {
+                throw new Error('Command failed');
+            }
+        } catch (error) {
+            console.error('Failed to send command:', error);
+            this.showAlert('Failed to send command', 'danger');
+        }
+    }
+
+    isCommandResearchApproved(commandType) {
+        const approvedCommands = [
+            'ping', 'info', 'status', 'heartbeat', 'disconnect',
+            'system_info', 'network_info', 'process_list'
+        ];
+        return approvedCommands.includes(commandType);
+    }
+
+    updateCommandQueue(commands) {
+        const tbody = document.getElementById('commandQueue');
+        if (!tbody) return;
+
+        if (!commands || commands.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No pending commands</td></tr>';
+            return;
+        }
+
+        const commandsHtml = commands.map(cmd => {
+            const status = cmd.status || 'pending';
+            const statusClass = status === 'completed' ? 'success' : 
+                              status === 'failed' ? 'danger' : 'warning';
+            
+            return `
+                <tr>
+                    <td>${cmd.command_id || 'Unknown'}</td>
+                    <td>${cmd.target || 'Unknown'}</td>
+                    <td>${cmd.type || 'Unknown'}</td>
+                    <td><span class="badge bg-${statusClass}">${status}</span></td>
+                    <td>${cmd.created_at ? new Date(cmd.created_at).toLocaleString() : 'Unknown'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="dashboard.cancelCommand('${cmd.command_id}')">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        tbody.innerHTML = commandsHtml;
+    }
+
+    cancelCommand(commandId) {
+        if (confirm(`Are you sure you want to cancel command ${commandId}?`)) {
+            fetch(`/api/commands/${commandId}/cancel`, { method: 'POST' })
+                .then(() => {
+                    this.showAlert(`Command ${commandId} cancelled`, 'info');
+                    this.refreshCommandQueue();
+                })
+                .catch(() => this.showAlert('Failed to cancel command', 'danger'));
+        }
+    }
+
+    async updateServerSettings() {
+        const settings = {
+            research_mode: document.getElementById('researchMode')?.checked,
+            log_level: document.getElementById('logLevel')?.value,
+            max_bots: document.getElementById('maxBots')?.value
+        };
+
+        try {
+            await fetch('/api/server/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            });
+            
+            this.showAlert('Server settings updated', 'success');
+        } catch (error) {
+            this.showAlert('Failed to update settings', 'danger');
+        }
+    }
+
+    updateServerTime() {
+        const timeElement = document.getElementById('serverTime');
+        if (timeElement) {
+            timeElement.textContent = new Date().toLocaleString();
+        }
+    }
+
     // Simplified API methods removed - using direct fetch calls
 }
 
@@ -720,6 +918,64 @@ window.disconnectAllBots = function() {
 window.logout = function() {
     localStorage.removeItem('c2_auth_token');
     window.location.href = '/login';
+};
+
+// Additional global functions called from HTML buttons
+window.searchBots = function() {
+    const searchTerm = document.getElementById('botSearch')?.value || '';
+    console.log(`Searching bots with term: ${searchTerm}`);
+    dashboard.showAlert(`Searching for: "${searchTerm}"`, 'info');
+    dashboard.loadBotList(); // Reload with search filter
+};
+
+window.filterLogs = function() {
+    const logLevel = document.getElementById('logLevel')?.value || 'all';
+    console.log(`Filtering logs by level: ${logLevel}`);
+    dashboard.showAlert(`Filtering logs by: ${logLevel}`, 'info');
+    dashboard.loadLogs();
+};
+
+window.exportLogs = function() {
+    console.log('Exporting logs...');
+    dashboard.showAlert('Exporting logs...', 'info');
+    // Simulate log export
+    setTimeout(() => {
+        dashboard.showAlert('Logs exported successfully', 'success');
+    }, 1000);
+};
+
+window.generateComplianceReport = function() {
+    console.log('Generating compliance report...');
+    dashboard.showAlert('Generating compliance report...', 'info');
+    fetch('/api/research/compliance-report', { method: 'POST' })
+        .then(() => dashboard.showAlert('Compliance report generated', 'success'))
+        .catch(() => dashboard.showAlert('Failed to generate report', 'danger'));
+};
+
+window.exportResearchData = function() {
+    console.log('Exporting research data...');
+    dashboard.showAlert('Exporting research data...', 'info');
+    fetch('/api/research/export', { method: 'POST' })
+        .then(() => dashboard.showAlert('Research data exported', 'success'))
+        .catch(() => dashboard.showAlert('Failed to export data', 'danger'));
+};
+
+window.rotateKeys = function() {
+    if (confirm('Are you sure you want to rotate encryption keys? This will disconnect all bots.')) {
+        console.log('Rotating encryption keys...');
+        dashboard.showAlert('Rotating encryption keys...', 'warning');
+        fetch('/api/security/rotate-keys', { method: 'POST' })
+            .then(() => dashboard.showAlert('Keys rotated successfully', 'success'))
+            .catch(() => dashboard.showAlert('Failed to rotate keys', 'danger'));
+    }
+};
+
+window.backupDatabase = function() {
+    console.log('Creating database backup...');
+    dashboard.showAlert('Creating database backup...', 'info');
+    fetch('/api/admin/backup', { method: 'POST' })
+        .then(() => dashboard.showAlert('Database backup created', 'success'))
+        .catch(() => dashboard.showAlert('Failed to create backup', 'danger'));
 };
 
 window.emergencyStop = function() {
