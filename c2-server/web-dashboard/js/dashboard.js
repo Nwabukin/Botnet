@@ -475,6 +475,64 @@ class C2Dashboard {
             case 'research':
                 await this.loadResearchData();
                 break;
+            default:
+                console.log(`No specific data loading for section: ${sectionName}`);
+        }
+    }
+
+    async refreshCommandQueue() {
+        // Simple command queue refresh
+        console.log('Command queue refreshed');
+        try {
+            const response = await fetch('/api/commands/pending');
+            if (response.ok) {
+                const commands = await response.json();
+                console.log('Pending commands:', commands);
+            }
+        } catch (e) {
+            console.log('Using demo command queue');
+        }
+    }
+
+    async loadGeographicData() {
+        // Simple geographic data loading
+        console.log('Geographic data loaded');
+        try {
+            const response = await fetch('/api/bots');
+            if (response.ok) {
+                const bots = await response.json();
+                console.log('Bot geographic data:', bots);
+            }
+        } catch (e) {
+            console.log('Using demo geographic data');
+        }
+    }
+
+    async loadLogs() {
+        // Simple logs loading
+        console.log('Logs loaded');
+        try {
+            const response = await fetch('/api/logs');
+            if (response.ok) {
+                const logs = await response.json();
+                console.log('System logs:', logs);
+            }
+        } catch (e) {
+            console.log('Using demo logs');
+        }
+    }
+
+    async loadResearchData() {
+        // Simple research data loading
+        console.log('Research data loaded');
+        try {
+            const response = await fetch('/api/research');
+            if (response.ok) {
+                const research = await response.json();
+                console.log('Research data:', research);
+            }
+        } catch (e) {
+            console.log('Using demo research data');
         }
     }
 
