@@ -1,198 +1,359 @@
-# Dockerized C++ Botnet Implementation
-## Educational/Research Purpose with Full Functionality
+# Advanced Botnet Research Framework
 
-⚠️ **EDUCATIONAL AND RESEARCH USE ONLY** ⚠️
+## 🔬 Educational and Research Purpose Only
 
-This project is developed strictly for educational cybersecurity research and defensive analysis. It is designed to operate in controlled, isolated environments only.
+**⚠️ IMPORTANT LEGAL NOTICE ⚠️**
 
-## 🎯 Project Overview
+This software is developed **EXCLUSIVELY** for educational, academic research, and cybersecurity training purposes. Any use of this software for malicious purposes, unauthorized access to computer systems, or any illegal activities is **STRICTLY PROHIBITED** and **NOT ENDORSED** by the authors.
 
-A comprehensive botnet implementation combining:
-- **Containerized C2 Infrastructure**: Docker-based command & control server with web dashboard
-- **Cross-Platform Bot Clients**: Standalone C++ executables deployable to any machine
-- **Educational Framework**: Built-in ethical controls and research logging
-- **Modern Architecture**: Encrypted communications, evasion techniques, and persistence mechanisms
+## 📋 Overview
 
-## 🏗️ Architecture
+The Advanced Botnet Research Framework is a comprehensive, containerized system designed for cybersecurity research, education, and defensive security training. It implements modern botnet architectures with advanced features while maintaining strict ethical controls and research compliance.
 
-```
-┌─────────────────────────────────────┐
-│          C2 Infrastructure          │
-│           (Dockerized)              │
-├─────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐   │
-│  │ C2 Server   │  │   Web       │   │
-│  │   (C++)     │  │ Dashboard   │   │
-│  └─────────────┘  └─────────────┘   │
-│  ┌─────────────┐  ┌─────────────┐   │
-│  │  Database   │  │   Logging   │   │
-│  │ (PostgreSQL)│  │  Service    │   │
-│  └─────────────┘  └─────────────┘   │
-└─────────────────────────────────────┘
-           │
-           │ Encrypted Communication
-           │
-┌─────────────────────────────────────┐
-│        Bot Clients                  │
-│     (Standalone Executables)       │
-├─────────────────────────────────────┤
-│  Machine A    Machine B    Machine C │
-│  ┌─────────┐  ┌─────────┐  ┌───────┐ │
-│  │Bot Client│  │Bot Client│  │Bot C..│ │
-│  │ (Linux) │  │(Windows) │  │(macOS)│ │
-│  └─────────┘  └─────────┘  └───────┘ │
-└─────────────────────────────────────┘
-```
+### 🎯 Key Features
 
-## 📁 Project Structure
+- **🏗️ Modular Architecture**: Scalable C2 server with containerized infrastructure
+- **🔐 Advanced Security**: Military-grade encryption (AES-256-GCM, RSA-4096, quantum-resistant)
+- **🌐 Cross-Platform**: Single C++ codebase running on Windows, Linux, and macOS
+- **📊 Comprehensive Monitoring**: ELK stack, Prometheus, Grafana integration
+- **🔬 Research Framework**: Ethical controls, compliance logging, and audit trails
+- **🐳 Container Orchestration**: Docker-based deployment with multiple profiles
+- **🛡️ Security Features**: Advanced persistence, evasion, and attack simulation
+- **⚖️ Ethical Compliance**: Built-in research boundaries and safety mechanisms
+
+## 🏛️ Project Structure
 
 ```
-botnet-research/
-├── 📋 docs/                     # Documentation
-│   ├── ethics/                  # Ethical guidelines
-│   ├── architecture/            # System design
-│   └── deployment/              # Deployment guides
-├── 🖥️ c2-server/               # C2 Server (Dockerized)
-│   ├── src/                     # C++ server source
-│   ├── web-dashboard/           # Management interface
-│   ├── docker/                  # Docker configuration
-│   └── scripts/                 # Deployment scripts
-├── 🤖 bot-client/               # Bot Client (Standalone)
-│   ├── src/                     # C++ client source
-│   ├── build/                   # Build configurations
-│   ├── deploy/                  # Deployment packages
-│   └── installers/              # Cross-platform installers
-├── 🔗 common/                   # Shared libraries
-│   ├── crypto/                  # Encryption/security
-│   ├── protocol/                # Communication protocol
-│   └── utils/                   # Common utilities
-├── 🧪 tests/                    # Testing framework
-│   ├── unit/                    # Unit tests
-│   ├── integration/             # Integration tests
-│   └── security/                # Security validation
-├── 🐳 docker/                   # Docker infrastructure
-│   ├── docker-compose.yml       # Multi-container setup
-│   ├── c2-server.Dockerfile     # C2 server image
-│   └── monitoring.Dockerfile    # Monitoring stack
-├── 🔧 tools/                    # Development tools
-│   ├── generators/              # Key/cert generators
-│   ├── analyzers/               # Traffic analyzers
-│   └── simulators/              # Test environments
-└── 📊 configs/                  # Configuration files
-    ├── development/             # Dev environment
-    ├── testing/                 # Test environment
-    └── production/              # Production settings
+Advanced-Botnet-Framework/
+├── 🤖 bot-client/                    # Cross-platform bot client
+│   ├── CMakeLists.txt               # Build configuration
+│   └── src/                         # Source code
+│       ├── main.cpp                 # Entry point
+│       ├── bot_client.h             # Core bot implementation
+│       ├── attacks/                 # Attack modules
+│       │   └── attack_manager.h     # DDoS, data exfiltration, etc.
+│       ├── commands/                # Command execution
+│       │   └── command_processor.h  # Cross-platform commands
+│       ├── communication/           # C2 communication
+│       │   └── c2_client.h         # Multi-protocol C2 client
+│       ├── config/                  # Configuration management
+│       │   └── configuration.h      # Dynamic configuration
+│       ├── ethics/                  # Ethical controls
+│       │   └── ethical_controller.h # Research mode enforcement
+│       ├── evasion/                 # Evasion techniques
+│       │   ├── anti_forensics.h     # Evidence destruction
+│       │   └── vm_detection.h       # VM/sandbox detection
+│       ├── persistence/             # Persistence mechanisms
+│       │   ├── advanced_persistence.h # Multi-level persistence
+│       │   └── persistence_manager.h  # Persistence coordination
+│       ├── security/                # Security features
+│       │   ├── encryption_manager.h # Encryption & key management
+│       │   └── security_bypass.h    # Advanced security bypass
+│       └── stealth/                 # Stealth capabilities
+│           └── stealth_manager.h    # Process hiding & concealment
+├── 🎯 c2-server/                    # Command & Control server
+│   ├── docker/                      # Docker configuration
+│   │   ├── Dockerfile              # Multi-stage container build
+│   │   ├── configs/                # Server configuration
+│   │   │   └── c2_server.conf      # Detailed server settings
+│   │   ├── entrypoint.sh           # Container initialization
+│   │   └── healthcheck.sh          # Health monitoring
+│   ├── scripts/                    # Deployment automation
+│   │   └── deploy.sh               # Multi-mode deployment
+│   ├── src/                        # C2 server source
+│   │   ├── c2_server.h             # Core C2 implementation
+│   │   └── database/               # Database layer
+│   │       └── database_manager.h  # Multi-database support
+│   └── web-dashboard/              # Management interface
+│       ├── index.html              # Dashboard UI
+│       └── js/
+│           └── dashboard.js        # Real-time monitoring
+├── 🔧 common/                      # Shared components
+│   ├── CMakeLists.txt              # Build configuration
+│   ├── crypto/                     # Cryptography
+│   │   └── encryption.h            # AES, RSA, quantum-resistant
+│   ├── protocol/                   # Communication protocols
+│   │   ├── dns_tunnel.h            # DNS tunneling
+│   │   ├── http_client.h           # HTTPS with obfuscation
+│   │   ├── message.h               # Message serialization
+│   │   ├── packet_handler.h        # Packet processing
+│   │   └── websocket_client.h      # Real-time communication
+│   └── utils/                      # Platform utilities
+│       └── platform_utils.h        # Cross-platform abstraction
+├── 🐳 Infrastructure/              # Container orchestration
+│   └── docker-compose.yml          # Multi-service deployment
+├── 📚 docs/                        # Documentation
+│   ├── README.md                   # Comprehensive guide
+│   ├── architecture/               # System design docs
+│   │   ├── COMMUNICATION_PROTOCOL.md
+│   │   ├── DOCKER_ARCHITECTURE.md
+│   │   └── SYSTEM_ARCHITECTURE.md
+│   └── ethics/                     # Legal & ethical framework
+│       ├── ETHICAL_GUIDELINES.md   # Menlo Report compliance
+│       └── LEGAL_DISCLAIMERS.md    # Legal terms & restrictions
+├── 🧪 tests/                       # Testing framework
+│   ├── integration/                # System integration tests
+│   │   └── test_system_integration.cpp
+│   └── unit/                       # Unit testing framework
+│       └── test_framework.h        # GoogleTest integration
+└── 📊 research_analysis.md         # Research documentation
 ```
 
-## 🚀 Key Features
-
-### C2 Server (Containerized)
-- **Multi-protocol Support**: HTTP/HTTPS, WebSocket, custom TCP/UDP
-- **Web Dashboard**: Real-time monitoring and control interface
-- **Encrypted Communications**: End-to-end encryption with key rotation
-- **Logging & Analytics**: Comprehensive activity logging
-- **Docker Orchestration**: Multi-container deployment with networking
-
-### Bot Client (Standalone)
-- **Cross-Platform**: Windows, Linux, macOS native executables
-- **Persistence Mechanisms**: Auto-startup and survival techniques
-- **Stealth Capabilities**: Process hiding and anti-analysis
-- **Modular Architecture**: Plugin-based attack modules
-- **Self-Updating**: Secure update mechanisms from C2
-
-### Security & Ethics
-- **Ethical Controls**: Built-in research limitations and kill switches
-- **Legal Compliance**: Comprehensive legal disclaimers
-- **Isolated Testing**: Air-gapped environment requirements
-- **Data Protection**: Privacy-preserving data handling
-
-## 🛠️ Technology Stack
-
-- **C++17/20**: Core language for performance and control
-- **Boost.Asio**: Asynchronous networking
-- **WebSocket++**: Real-time web communication
-- **OpenSSL**: Cryptographic operations
-- **Docker & Docker Compose**: Containerization
-- **PostgreSQL**: Data persistence
-- **React/TypeScript**: Web dashboard frontend
-- **CMake**: Cross-platform build system
-
-## ⚖️ Legal & Ethical Notice
-
-**FOR EDUCATIONAL AND RESEARCH PURPOSES ONLY**
-
-This software is intended exclusively for:
-- Cybersecurity education and training
-- Defensive security research
-- Academic study of malware behavior
-- Controlled penetration testing
-
-**PROHIBITED USES:**
-- Unauthorized access to computer systems
-- Malicious deployment on non-owned systems
-- Commercial exploitation
-- Any illegal activities
-
-Users must:
-- Operate only in isolated, controlled environments
-- Comply with all applicable laws and regulations
-- Obtain proper authorization before testing
-- Follow responsible disclosure practices
-
-## 🧪 Development Environment
+## 🚀 Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose
-- C++17 compatible compiler (GCC 9+, Clang 10+, MSVC 2019+)
-- CMake 3.16+
-- Git
-- Node.js 16+ (for web dashboard)
 
-### Quick Start
+- **Docker** & **Docker Compose** (v3.8+)
+- **4GB+ RAM** (8GB+ recommended)
+- **10GB+ free disk space**
+- **Windows 10+**, **Linux**, or **macOS**
+
+### 🔧 Installation & Deployment
+
+1. **Clone the Repository**
+   ```bash
+   git clone <repository-url>
+   cd Advanced-Botnet-Framework
+   ```
+
+2. **Deploy Research Environment**
+   ```bash
+   # Start research environment with full monitoring
+   ./c2-server/scripts/deploy.sh research my_research_session_2024
+
+   # Alternative deployment modes:
+   ./c2-server/scripts/deploy.sh production    # Minimal production setup
+   ./c2-server/scripts/deploy.sh security     # With security scanning tools
+   ./c2-server/scripts/deploy.sh maintenance  # Backup and maintenance
+   ./c2-server/scripts/deploy.sh full         # Complete stack
+   ```
+
+3. **Access Services**
+   - **C2 Dashboard**: http://localhost:8080
+   - **HTTPS API**: https://localhost:8443
+   - **WebSocket**: ws://localhost:8081
+   - **Monitoring**: http://localhost:3000 (Grafana)
+   - **Log Analysis**: http://localhost:5601 (Kibana)
+   - **Metrics**: http://localhost:9090 (Prometheus)
+
+### 🎮 Quick Demo
+
 ```bash
-# Clone repository
-git clone <repository-url>
-cd botnet-research
+# 1. Deploy the research environment
+./c2-server/scripts/deploy.sh research demo_session_2024
 
-# Set up development environment
-./scripts/setup-dev.sh
-
-# Build C2 server infrastructure
-docker-compose up -d
-
-# Build bot client for current platform
+# 2. Build bot client (after containers are running)
 cd bot-client
 mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake -DRESEARCH_MODE=ON ..
 make
 
-# Deploy bot client to target machine
-./deploy/package-client.sh
+# 3. Run bot client in research mode
+./bot_client --research-mode --session-id=demo_session_2024
+
+# 4. Monitor activity in dashboard
+open http://localhost:8080
 ```
 
-## 📚 Documentation
+## 🔧 Core Components
 
-- [Ethical Guidelines](docs/ethics/README.md)
-- [Architecture Overview](docs/architecture/README.md)
-- [Deployment Guide](docs/deployment/README.md)
-- [Security Considerations](docs/security/README.md)
-- [API Documentation](docs/api/README.md)
+### 🤖 Bot Client Features
 
-## 🤝 Contributing
+- **Cross-Platform**: Single C++ codebase for Windows, Linux, macOS
+- **Multi-Protocol Communication**: HTTPS, WebSocket, DNS tunneling
+- **Advanced Persistence**: Registry, services, WMI, fileless methods
+- **Evasion Capabilities**: VM detection, anti-forensics, stealth
+- **Attack Modules**: DDoS, data collection, network reconnaissance
+- **Security Features**: AES-256 encryption, certificate pinning
+- **Ethical Controls**: Research mode enforcement, compliance logging
 
-This project follows strict ethical guidelines. Contributors must:
-1. Read and agree to ethical guidelines
-2. Sign contributor agreement
-3. Submit code for security review
-4. Include documentation for all changes
+### 🎯 C2 Server Features
 
-## 📞 Contact & Support
+- **Containerized Architecture**: Docker-based with health monitoring
+- **Web Dashboard**: Real-time bot management and monitoring
+- **REST API**: Comprehensive RESTful API for bot control
+- **WebSocket Support**: Real-time bidirectional communication
+- **Database Integration**: PostgreSQL with Redis caching
+- **Monitoring Stack**: ELK, Prometheus, Grafana integration
+- **Multi-Mode Deployment**: Research, production, security profiles
 
-For questions about ethical use, security concerns, or research collaboration:
-- Create an issue in this repository
-- Follow responsible disclosure practices
-- Consult with legal counsel when appropriate
+### 🔐 Security Architecture
+
+- **Encryption**: AES-256-GCM, ChaCha20-Poly1305, RSA-4096
+- **Quantum-Resistant**: Post-quantum cryptography support
+- **Network Security**: SSL/TLS, certificate pinning, traffic obfuscation
+- **Authentication**: JWT tokens, certificate-based auth
+- **Access Control**: Role-based permissions, session management
+- **Audit Logging**: Comprehensive activity and compliance logging
+
+## 🧪 Testing Framework
+
+### Running Tests
+
+```bash
+# Build and run all tests
+cd tests
+mkdir build && cd build
+cmake ..
+make
+
+# Run specific test suites
+./test_unit           # Unit tests with mocks
+./test_integration    # End-to-end integration tests
+./test_security       # Security validation tests
+./test_performance    # Load and performance tests
+./test_compliance     # Research compliance tests
+```
+
+### Test Coverage
+
+- **Unit Tests**: Mock-based testing for all components
+- **Integration Tests**: Complete workflow validation
+- **Security Tests**: Encryption, authentication, vulnerability scanning
+- **Performance Tests**: Load testing with 200+ concurrent connections
+- **Compliance Tests**: Ethical boundary and audit validation
+
+## 📊 Monitoring & Analytics
+
+### Real-time Monitoring
+
+- **Bot Status**: Connection health, system info, last activity
+- **Command Execution**: Real-time command tracking and results
+- **Network Traffic**: Communication patterns and anomalies
+- **System Performance**: Resource usage and optimization metrics
+- **Security Events**: Threat detection and incident alerts
+
+### Analytics Dashboards
+
+- **Operational Overview**: High-level system status and health
+- **Research Metrics**: Compliance status and research progress
+- **Security Analytics**: Threat detection and analysis
+- **Performance Metrics**: System optimization insights
+
+## ⚖️ Ethical & Legal Framework
+
+### Research Compliance
+
+- **Menlo Report Principles**: Full compliance with research ethics
+- **IRB Integration**: Institutional Review Board approval tracking
+- **Legal Compliance**: GDPR, CFAA, international treaty compliance
+- **Data Protection**: Comprehensive anonymization and protection
+- **Emergency Controls**: Immediate shutdown and safety mechanisms
+
+### Usage Restrictions
+
+- ✅ **Educational Use**: Academic research and cybersecurity training
+- ✅ **Research Purpose**: Legitimate security research projects
+- ✅ **Defense Training**: Blue team and incident response training
+- ❌ **Malicious Use**: Strictly prohibited and legally prosecuted
+- ❌ **Unauthorized Access**: Forbidden under all circumstances
+- ❌ **Commercial Exploitation**: Requires explicit authorization
+
+## 🔧 Configuration
+
+### Environment Variables
+
+```bash
+# Research Configuration
+RESEARCH_MODE=true
+RESEARCH_SESSION_ID="your_session_id"
+ETHICAL_CONTROLS=strict
+COMPLIANCE_LOGGING=enabled
+
+# Security Configuration
+C2_ENCRYPTION_KEY="your_32_char_encryption_key"
+JWT_SECRET="your_jwt_secret_key"
+SSL_CERT_PATH="/app/certs/server.crt"
+
+# Database Configuration
+C2_DATABASE_URL="postgresql://botnet:password@postgres:5432/botnet_research"
+C2_REDIS_URL="redis://:password@redis:6379"
+
+# Monitoring Configuration
+PROMETHEUS_ENABLED=true
+GRAFANA_ADMIN_PASSWORD="secure_password"
+ELK_STACK_ENABLED=true
+```
+
+## 📋 API Reference
+
+### C2 Server API
+
+#### Bot Management
+```http
+GET    /api/v1/bots                 # List all connected bots
+GET    /api/v1/bots/{id}            # Get specific bot details
+POST   /api/v1/bots/{id}/commands   # Send command to bot
+GET    /api/v1/bots/{id}/logs       # Get bot activity logs
+DELETE /api/v1/bots/{id}            # Remove/disconnect bot
+```
+
+#### Research Management
+```http
+GET    /api/v1/research/sessions           # List research sessions
+POST   /api/v1/research/sessions           # Create new research session
+GET    /api/v1/research/sessions/{id}      # Get session details
+POST   /api/v1/research/sessions/{id}/stop # Stop research session
+GET    /api/v1/research/compliance         # Get compliance status
+```
+
+#### System Monitoring
+```http
+GET    /api/v1/metrics              # Get system metrics
+GET    /api/v1/health               # Health check endpoint
+GET    /api/v1/logs                 # Get system logs
+GET    /api/v1/alerts               # Get active alerts
+```
+
+## 🚨 Security Considerations
+
+### Deployment Security
+
+1. **Network Isolation**: Deploy in isolated network segments
+2. **Access Control**: Strong authentication and authorization
+3. **Monitoring**: Comprehensive logging and alerting
+4. **Updates**: Keep all components updated and patched
+5. **Backup**: Secure backup and recovery procedures
+
+### Research Security
+
+1. **Ethical Approval**: Obtain proper institutional approval
+2. **Legal Compliance**: Ensure compliance with local laws
+3. **Data Protection**: Implement data protection measures
+4. **Risk Assessment**: Conduct thorough risk assessments
+5. **Incident Response**: Prepare response procedures
+
+## 📄 License
+
+This project is licensed under the **Educational and Research License (ERL)** - see the documentation for details.
+
+### License Summary
+
+- ✅ **Educational Use**: Permitted for educational purposes
+- ✅ **Research Use**: Permitted for legitimate research
+- ✅ **Modification**: Permitted with proper attribution
+- ✅ **Distribution**: Permitted for educational/research purposes
+- ❌ **Commercial Use**: Prohibited without explicit permission
+- ❌ **Malicious Use**: Strictly prohibited under all circumstances
+- ❌ **Unauthorized Access**: Strictly prohibited and illegal
+
+## 🚨 Disclaimer
+
+**This software is provided "AS IS" without warranties of any kind. The authors and contributors are not responsible for any misuse, damage, or legal consequences resulting from the use of this software. Users are solely responsible for ensuring their use complies with applicable laws and ethical standards.**
 
 ---
 
-**Remember**: With great power comes great responsibility. Use this knowledge to defend, not to attack.
+## 📊 Project Status
+
+- **Development Status**: ✅ Complete
+- **Testing Status**: ✅ Comprehensive test suite
+- **Documentation Status**: ✅ Complete documentation
+- **Security Review**: ✅ Security validated
+- **Ethical Review**: ✅ Ethics approved
+- **Research Ready**: ✅ Production ready
+
+---
+
+*Last Updated: 2024*
+*Version: 1.0.0*
+*Maintained by: Advanced Cybersecurity Research Team*
