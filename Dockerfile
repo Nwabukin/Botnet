@@ -17,7 +17,7 @@ RUN mkdir -p /app/web
 # Copy web dashboard files if they exist
 COPY c2-server/web-dashboard/ /app/web/
 
-# Create the Python server file with full API support for the dashboard
+# Create comprehensive Python server with all dashboard API endpoints
 RUN echo 'import http.server' > /app/server.py
 RUN echo 'import socketserver' >> /app/server.py
 RUN echo 'import json' >> /app/server.py
@@ -34,10 +34,16 @@ RUN echo '        if self.path == "/health":' >> /app/server.py
 RUN echo '            self.send_json({"status": "healthy", "mode": "research", "timestamp": datetime.now().isoformat()})' >> /app/server.py
 RUN echo '        elif self.path == "/api/status":' >> /app/server.py
 RUN echo '            self.send_json({"framework": "Advanced Botnet Research Framework", "version": "1.0.0", "mode": "RESEARCH", "status": "operational", "research_mode": True, "ethical_controls": "STRICT"})' >> /app/server.py
+RUN echo '        elif self.path == "/api/server/info":' >> /app/server.py
+RUN echo '            self.send_json({"research_mode": True, "version": "1.0.0", "status": "operational"})' >> /app/server.py
+RUN echo '        elif self.path == "/api/statistics":' >> /app/server.py
+RUN echo '            self.send_json({"active_bots": 0, "commands_today": 0, "bytes_transferred": 0, "server_start_time": datetime.now().isoformat()})' >> /app/server.py
 RUN echo '        elif self.path == "/api/bots":' >> /app/server.py
-RUN echo '            self.send_json({"bots": [], "count": 0, "active": 0})' >> /app/server.py
-RUN echo '        elif self.path == "/api/stats":' >> /app/server.py
-RUN echo '            self.send_json({"active_bots": 0, "total_commands": 0, "data_transferred": "0 MB", "uptime": "00:00:00"})' >> /app/server.py
+RUN echo '            self.send_json([])' >> /app/server.py
+RUN echo '        elif self.path == "/api/activity/recent":' >> /app/server.py
+RUN echo '            self.send_json([{"timestamp": datetime.now().isoformat(), "type": "INFO", "description": "Server started in research mode"}])' >> /app/server.py
+RUN echo '        elif self.path == "/api/commands/pending":' >> /app/server.py
+RUN echo '            self.send_json([])' >> /app/server.py
 RUN echo '        elif self.path == "/api/logs":' >> /app/server.py
 RUN echo '            self.send_json({"logs": ["Server started in research mode", "Ethical controls activated", "Compliance monitoring enabled"], "count": 3})' >> /app/server.py
 RUN echo '        elif self.path == "/api/research":' >> /app/server.py
@@ -64,8 +70,15 @@ RUN echo 'print("📁 Serving dashboard from: /app/web")' >> /app/server.py
 RUN echo 'with socketserver.TCPServer(("", PORT), Handler) as httpd:' >> /app/server.py
 RUN echo '    httpd.serve_forever()' >> /app/server.py
 
-# The web dashboard files are already copied from c2-server/web-dashboard/
-# No need to create index.html as it already exists
+# Create demo authentication token in localStorage via a simple JS injection
+RUN echo 'document.addEventListener("DOMContentLoaded", function() {' > /app/web/auth-demo.js
+RUN echo '  if (!localStorage.getItem("c2_auth_token")) {' >> /app/web/auth-demo.js
+RUN echo '    localStorage.setItem("c2_auth_token", "demo_token_research_mode");' >> /app/web/auth-demo.js
+RUN echo '  }' >> /app/web/auth-demo.js
+RUN echo '});' >> /app/web/auth-demo.js
+
+# Add authentication script to index.html for demo mode
+RUN sed -i 's|<script src="js/dashboard.js"></script>|<script src="auth-demo.js"></script>\n    <script src="js/dashboard.js"></script>|' /app/web/index.html
 
 # Environment variables
 ENV RESEARCH_MODE=true
