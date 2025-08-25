@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botnet C2 Management Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --dark-bg: #1a1a1a;
+            --card-bg: #2d3748;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background-color: var(--primary-color) !important;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.125);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #bdc3c7;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        .btn-warning {
+            background-color: var(--warning-color);
+            border-color: var(--warning-color);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            border-color: var(--danger-color);
+        }
+
+        .table-dark {
+            --bs-table-bg: var(--card-bg);
+        }
+
+        .progress {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .alert {
+            border: none;
+            border-radius: 8px;
+        }
+
+        .research-mode-banner {
+            background: linear-gradient(45deg, #e74c3c, #f39c12);
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .status-online {
+            color: var(--success-color);
+        }
+
+        .status-offline {
+            color: var(--danger-color);
+        }
+
+        .status-idle {
+            color: var(--warning-color);
+        }
+
+        .map-container {
+            height: 400px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .command-terminal {
+            background-color: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+        }
+
+        .sidebar {
+            background-color: var(--secondary-color);
+            min-height: calc(100vh - 76px);
+            padding: 20px 0;
+        }
+
+        .sidebar .nav-link {
+            color: #bdc3c7;
+            padding: 12px 20px;
+            border-radius: 0;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: white;
+            background-color: var(--accent-color);
+        }
+
+        .main-content {
+            padding: 20px;
+        }
+
+        .log-viewer {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 5px;
+            height: 400px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+        }
+
+        .ethical-warning {
+            background: linear-gradient(45deg, #8e44ad, #e74c3c);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid #f39c12;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            color: white;
+        }
+
+        .form-control {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .form-control:focus {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-color: var(--accent-color);
+            color: white;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Research Mode Banner -->
+    <div id="researchBanner" class="research-mode-banner" style="display: none;">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>RESEARCH MODE ACTIVE</strong> - All activities are logged and monitored for educational purposes
+        <i class="fas fa-exclamation-triangle"></i>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-network-wired"></i>
+                Botnet C2 Dashboard
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3" id="currentUser">
+                    <i class="fas fa-user"></i> Admin
+                </span>
+                <span class="navbar-text me-3" id="serverTime"></span>
+                <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Ethical Warning -->
+    <div class="container-fluid mt-3">
+        <div class="ethical-warning">
+            <h5><i class="fas fa-shield-alt"></i> Ethical Use Notice</h5>
+            <p class="mb-1">This software is designed for educational, research, and authorized security testing purposes only.</p>
+            <p class="mb-0">Unauthorized use is strictly prohibited and may violate local, state, and federal laws.</p>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 sidebar">
+                <nav class="nav flex-column">
+                    <a class="nav-link active" href="#" onclick="showSection('dashboard')">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="#" onclick="showSection('bots')">
+                        <i class="fas fa-robot"></i> Bot Management
+                    </a>
+                    <a class="nav-link" href="#" onclick="showSection('commands')">
+                        <i class="fas fa-terminal"></i> Commands
+                    </a>
+                    <a class="nav-link" href="#" onclick="showSection('map')">
+                        <i class="fas fa-globe"></i> Geographic View
+                    </a>
+                    <a class="nav-link" href="#" onclick="showSection('logs')">
+                        <i class="fas fa-list-alt"></i> Logs & Audit
+                    </a>
+                    <a class="nav-link" href="#" onclick="showSection('research')">
+                        <i class="fas fa-microscope"></i> Research Mode
+                    </a>
+                    <a class="nav-link" href="#" onclick="showSection('settings')">
+                        <i class="fas fa-cog"></i> Settings
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9 col-lg-10 main-content">
+                <!-- Dashboard Section -->
+                <div id="dashboard" class="content-section">
+                    <h2><i class="fas fa-tachometer-alt"></i> Dashboard Overview</h2>
+                    
+                    <!-- Statistics Cards -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="stat-number text-success" id="activeBots">0</div>
+                                <div class="stat-label">Active Bots</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="stat-number text-info" id="totalCommands">0</div>
+                                <div class="stat-label">Commands Today</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="stat-number text-warning" id="dataTransferred">0 MB</div>
+                                <div class="stat-label">Data Transferred</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="stat-number text-primary" id="uptime">00:00:00</div>
+                                <div class="stat-label">Server Uptime</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts and Activity -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-chart-line"></i> Bot Activity (24h)</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="activityChart" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-chart-pie"></i> Platform Distribution</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="platformChart" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-clock"></i> Recent Activity</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="recentActivity" class="log-viewer">
+                                        Loading recent activity...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bot Management Section -->
+                <div id="bots" class="content-section" style="display: none;">
+                    <h2><i class="fas fa-robot"></i> Bot Management</h2>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="botSearch" placeholder="Search bots...">
+                                <button class="btn btn-outline-primary" onclick="searchBots()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <button class="btn btn-success" onclick="refreshBots()">
+                                <i class="fas fa-sync"></i> Refresh
+                            </button>
+                            <button class="btn btn-danger" onclick="disconnectAllBots()">
+                                <i class="fas fa-ban"></i> Disconnect All
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Status</th>
+                                            <th>Bot ID</th>
+                                            <th>IP Address</th>
+                                            <th>Hostname</th>
+                                            <th>Platform</th>
+                                            <th>Country</th>
+                                            <th>Last Seen</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="botsTable">
+                                        <!-- Dynamic content -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Commands Section -->
+                <div id="commands" class="content-section" style="display: none;">
+                    <h2><i class="fas fa-terminal"></i> Command Center</h2>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-plus"></i> Send Command</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="commandForm">
+                                        <div class="mb-3">
+                                            <label class="form-label">Command Type</label>
+                                            <select class="form-control" id="commandType">
+                                                <option value="system_info">System Information</option>
+                                                <option value="network_scan">Network Scan</option>
+                                                <option value="file_list">File Listing</option>
+                                                <option value="process_list">Process List</option>
+                                                <option value="ping">Ping Test</option>
+                                                <option value="research_data">Research Data Collection</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Target Bots</label>
+                                            <select class="form-control" id="targetBots" multiple>
+                                                <option value="all">All Active Bots</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Parameters (JSON)</label>
+                                            <textarea class="form-control" id="commandParams" rows="3" placeholder='{"param1": "value1"}'></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-paper-plane"></i> Send Command
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-list"></i> Command Queue</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="commandQueue" style="max-height: 300px; overflow-y: auto;">
+                                        <!-- Dynamic content -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Command Results -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-bar"></i> Command Results</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="commandResults" class="table-responsive">
+                                <!-- Dynamic content -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Geographic Map Section -->
+                <div id="map" class="content-section" style="display: none;">
+                    <h2><i class="fas fa-globe"></i> Geographic Distribution</h2>
+                    
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="botMap" class="map-container"></div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-flag"></i> Top Countries</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="countryStats">
+                                        <!-- Dynamic content -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-clock"></i> Time Zone Distribution</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="timezoneChart" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logs Section -->
+                <div id="logs" class="content-section" style="display: none;">
+                    <h2><i class="fas fa-list-alt"></i> Logs & Audit Trail</h2>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <select class="form-control" id="logLevel">
+                                <option value="all">All Levels</option>
+                                <option value="INFO">INFO</option>
+                                <option value="WARN">WARNING</option>
+                                <option value="ERROR">ERROR</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="date" class="form-control" id="logDate">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="logSearch" placeholder="Search logs...">
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-primary" onclick="filterLogs()">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportLogs()">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="logsViewer" class="log-viewer">
+                                Loading logs...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Research Mode Section -->
+                <div id="research" class="content-section" style="display: none;">
+                    <h2><i class="fas fa-microscope"></i> Research Mode Controls</h2>
+                    
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Research Mode Information</h5>
+                        <p>Research mode ensures ethical compliance and comprehensive logging for educational purposes.</p>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-shield-alt"></i> Current Research Session</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="researchSessionInfo">
+                                        <!-- Dynamic content -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-chart-bar"></i> Compliance Statistics</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="complianceStats">
+                                        <!-- Dynamic content -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-file-alt"></i> Generate Compliance Report</h5>
+                                </div>
+                                <div class="card-body">
+                                    <button class="btn btn-primary" onclick="generateComplianceReport()">
+                                        <i class="fas fa-file-pdf"></i> Generate PDF Report
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="exportResearchData()">
+                                        <i class="fas fa-database"></i> Export Research Data
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div id="settings" class="content-section" style="display: none;">
+                    <h2><i class="fas fa-cog"></i> Server Settings</h2>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-server"></i> Server Configuration</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="serverSettings">
+                                        <div class="mb-3">
+                                            <label class="form-label">Operation Mode</label>
+                                            <select class="form-control" id="operationMode">
+                                                <option value="research">Research Mode</option>
+                                                <option value="educational">Educational Mode</option>
+                                                <option value="pentest">Penetration Testing</option>
+                                                <option value="operational">Operational Mode</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Max Concurrent Bots</label>
+                                            <input type="number" class="form-control" id="maxBots" value="1000">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Bot Timeout (seconds)</label>
+                                            <input type="number" class="form-control" id="botTimeout" value="300">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save"></i> Save Settings
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-key"></i> Security Settings</h5>
+                                </div>
+                                <div class="card-body">
+                                    <button class="btn btn-warning mb-2 w-100" onclick="rotateKeys()">
+                                        <i class="fas fa-sync"></i> Rotate Encryption Keys
+                                    </button>
+                                    <button class="btn btn-info mb-2 w-100" onclick="backupDatabase()">
+                                        <i class="fas fa-database"></i> Backup Database
+                                    </button>
+                                    <button class="btn btn-danger w-100" onclick="emergencyStop()">
+                                        <i class="fas fa-stop"></i> Emergency Stop
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="loading-spinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/maps.js"></script>
+</body>
+</html>
